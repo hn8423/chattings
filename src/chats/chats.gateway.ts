@@ -1,44 +1,55 @@
+import { Logger } from '@nestjs/common';
 import { Socket } from 'socket.io';
 import {
   ConnectedSocket,
   MessageBody,
+  OnGatewayConnection,
+  OnGatewayDisconnect,
+  OnGatewayInit,
   SubscribeMessage,
   WebSocketGateway,
 } from '@nestjs/websockets';
 
-@WebSocketGateway()
-export class ChatsGateway {
-  // private logger = new Logger('chat');
+@WebSocketGateway({ namespace: 'chattings' })
+export class ChatsGateway
+  implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
+{
+  private logger = new Logger('chat');
 
-  // constructor() {
-  //   this.logger.log('constructor');
-  // }
+  constructor() {
+    this.logger.log('constructor');
+  }
 
-  // afterInit() {
-  //   this.logger.log('init');
-  // }
+  afterInit() {
+    this.logger.log('init');
+  }
 
-  // handleDisconnect(@ConnectedSocket() socket: Socket) {
-  //   this.logger.log(`disconnected : ${socket.id} ${socket.nsp.name}`);
-  // }
+  handleDisconnect(@ConnectedSocket() socket: Socket) {
+    this.logger.log(`disconnected : ${socket.id} ${socket.nsp.name}`);
+  }
 
-  // handleConnection(@ConnectedSocket() socket: Socket) {
-  //   this.logger.log(`connected : ${socket.id} ${socket.nsp.name}`);
-  // }
+  handleConnection(@ConnectedSocket() socket: Socket) {
+    this.logger.log(`connected : ${socket.id} ${socket.nsp.name}`);
+  }
 
-  @SubscribeMessage('user_name')
+  @SubscribeMessage('new_user')
   handleNewUser(
     @MessageBody() username: string,
     @ConnectedSocket() socket: Socket,
   ) {
-    console.log(username);
-    console.log(socket.id);
+    // username db에 적재
+    socket.broadcast.emit('user_connected', username);
+    return username;
+  }
 
-    socket.emit('hello_user', 'hello' + username);
-
-    // // username db에 적재
-    // socket.broadcast.emit('user_connected', username);
-    // return username;
-    return 'hello hyunin';
+  @SubscribeMessage('submit_chat')
+  handleSubmitChat(
+    @MessageBody() chat: string,
+    @ConnectedSocket() socket: Socket,
+  ) {
+    socket.broadcast.emit('new_chat', {
+      chat,
+      username: socket.id,
+    });
   }
 }
